@@ -89,7 +89,11 @@ function Solve {
     $max = $row.length - (($sizes | Measure-Object -Sum).Sum + $sizes.Count) - $size +1
 
     write-verbose "  size: $size end: $end max: $max"
-
+    #pull result from cache if it exists (MUCH MUCH FASTER)
+    if($cache.containsKey($key)) {
+        write-verbose "***CACHE*** $($cache[$key])"
+        return $cache[$key]
+    }
     for($i = 0; $i -lt $max; $i++) {
 
         if($left -eq "#") { break } #exit loop is left-most character of test range is # because it'll mean a new group
@@ -137,8 +141,8 @@ foreach($l in $text) {
     
     write-verbose ("="*($l.length))
 
-    $possibilities = ProcessLine $row $sizes
-    #$possibilities = Solve $row $sizes
+    #$possibilities = ProcessLine $row $sizes
+    $possibilities = Solve $row $sizes
     
     write-verbose "RESULT: $possibilities"
     $sum += $possibilities
