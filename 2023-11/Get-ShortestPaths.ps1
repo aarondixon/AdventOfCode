@@ -72,4 +72,4 @@ foreach($i in $galaxies.Keys) {
     }
 }
 
-$paths.Path | measure-object -sum | select sum
+$paths.Path | measure-object -sum | select-object sum
