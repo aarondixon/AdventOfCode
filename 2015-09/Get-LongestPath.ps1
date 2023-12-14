@@ -25,21 +25,21 @@ foreach($line in (Get-Content $inputfile)) {
     $Paths[$end][$start] = $dist
 }
 
-$shortest = 0
+$longest = 0
 foreach($start in $Paths.Keys) {
     $distance = 0
     [System.Collections.Generic.List[string]]$citiestovisit = $Paths.Keys | Where-Object {$_ -ne $start}
     $city = $start
     while($citiestovisit.Count -gt 0) {
-        $path = $Paths[$city].GetEnumerator() | Where-Object {$_.Name -in $citiestovisit} | Sort-Object Value | Select-Object -First 1
+        $path = $Paths[$city].GetEnumerator() | Where-Object {$_.Name -in $citiestovisit} | Sort-Object Value -Descending | Select-Object -First 1
         $distance += $path.Value
         $citiestovisit.Remove($path.Name) | Out-null
         $city = $path.Name
     }
 
-    if($shortest -eq 0 -or $distance -lt $shortest) {
-        $shortest = $distance
+    if($longest -eq 0 -or $distance -gt $longest) {
+        $longest = $distance
     }
 }
 
-$shortest
+$longest
