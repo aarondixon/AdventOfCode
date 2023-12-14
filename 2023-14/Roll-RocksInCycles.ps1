@@ -83,7 +83,7 @@ $cols = Transpose $rows
 #find when repeats, do $cycles % $repeat, calc weight (for sample, $repeat = 7 (6 +1?), weight = 64)
 
 $results = @{}
-$repeat = 0
+$loop = 0
 $first = -1
 # perform cycles until a loop is detected. once loop is found, return loop length and first occurrence (as offset)
 for($c = 1; $c -le $cycles; $c++) {
