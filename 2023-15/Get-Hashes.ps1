@@ -15,7 +15,7 @@ class lens {
     }
 }
 
-if($text) { 
+if($test) { 
     $text = "rn=1,cm-,qp=3,cm=2,qp-,pc=4,ot=9,ab=5,pc-,pc=6,ot=7"
 } else {
     $text = Get-Content $inputfile -Raw
@@ -34,15 +34,18 @@ function Get-Hash {
     - Set the current value to the remainder of dividing itself by 256.
     #>
 
-    $str -replace [Regex]::Escape(([Environment]::NewLine)),""
+    $str = $str -replace [Regex]::Escape(([Environment]::NewLine)),""
 
-    $value = 0
-    for($i = 0; $i -lt $step.length; $i++) {
-        $ascii = [int]([char]$step[$i])
+    [int]$value = 0
+    write-verbose $str
+    for($i = 0; $i -lt $str.length; $i++) {
+        write-verbose $value
+        $ascii = [int]([char]$str[$i])
         $value = (($value + $ascii) * $multiplier) % $divisor
+        write-verbose "  $value"
     }
 
-    write-verbose $value
+    #write-verbose $value
     return $value
 }
 
@@ -75,10 +78,10 @@ foreach($step in $text -split ",") {
     }
 
     $box = [int](Get-Hash $label)
-    write-verbose $box
+    write-verbose "$label = $box"
     switch($operator) {
         "=" {
-            if($boxes[$box].ContainsKey($label)) {
+            if($boxes[$box].Contains($label)) {
                 $boxes[$box][$label] = $focallength
             } else {
                 $boxes[$box].Add($label,$focallength)
@@ -86,7 +89,7 @@ foreach($step in $text -split ",") {
         }
 
         "-" {
-            if($boxes[$box].ContainsKey($label)) {
+            if($boxes[$box].Contains($label)) {
                 $boxes[$box].Remove($label)
             }
         }
@@ -95,8 +98,9 @@ foreach($step in $text -split ",") {
 
 $total = 0
 for($i = 0; $i -lt 256; $i++) {
-    for($j = 0; $j -lt $boxes[$box].Keys.Count; $j++) {
-        $total += (1 + $i) * (1 + $j) * $boxes[$box][$j]
+    for($j = 0; $j -lt $boxes[$i].Keys.Count; $j++) {
+        Write-verbose "box $i, lens $j"
+        $total += (1 + $i) * (1 + $j) * $boxes[$i][$j]
     }
 }
 
