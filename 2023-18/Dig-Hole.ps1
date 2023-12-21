@@ -143,8 +143,8 @@ for($r = $minr; $r -le $maxr; $r++) {
             $grid[($r+$offr),($c+$offc)] = "#"
         } else {
             # write-verbose "$r = $($edgesonrow["$r"])"
-            $edgesright = ($edgesonrow["$r"] | Where-Object {$_ -gt $c}).count
-            $edgesleft = ($edgesonrow["$r"] | Where-Object {$_ -lt $c}).count
+            #$edgesright = ($edgesonrow["$r"] | Where-Object {$_ -gt $c}).count
+            #$edgesleft = ($edgesonrow["$r"] | Where-Object {$_ -lt $c}).count
             # write-verbose $edgesright
             
             #if($edgesright % 2 -ne 0 -and ($c -gt $minc) -and $edgesleft -gt 0) {
