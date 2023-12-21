@@ -1,7 +1,7 @@
 [cmdletbinding()]
 param(
     $inputfile = ".\sample.txt",
-    $max = 3,
+    $max = 10,
     $target
 )
 
@@ -73,7 +73,7 @@ function Dijkstra {
         #$u = GetMinDistance $Q $dist
         [string]$u = ""
         [int]$cost = 0
-        $Q.TryDequeue([ref]$u,[ref]$cost)
+        $Q.TryDequeue([ref]$u,[ref]$cost) | Out-null
         write-verbose "$u"
 
 
@@ -92,7 +92,18 @@ function Dijkstra {
             $newr = $pos[0]
             $newc = $pos[1]
             $cost = $originalcost
-            foreach($d in (1,2,3)) {
+            for($d = 1; $d -le 3; $d++) {
+                if($dir -eq 1) {
+                    $newc = $pos[1] + $d * $s
+                } else {
+                    $newr = $pos[0] + $d * $s
+                }
+
+                if($newr -lt 0 -or $newr -gt $maxr -or $newc -lt 0 -or $newc -gt $maxc) { break }
+
+                $cost += $grid["$newr,$newc"]
+            }
+            for($d = 4; $d -le $max; $d++) {
                 if($dir -eq 1) {
                     $newc = $pos[1] + $d * $s
                 } else {
