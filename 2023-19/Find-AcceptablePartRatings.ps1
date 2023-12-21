@@ -2,32 +2,8 @@
 param(
     $inputfile = ".\sample.txt",
     $first = "in",
-    $max = 4000,
-    $min = 1
+    $keys = ("x","m","a","s")
 )
-
-class Part {
-    [int]$x
-    [int]$m
-    [int]$a
-    [int]$s
-
-    Part($x,$m,$a,$s) {
-        $this.x = $x
-        $this.m = $m
-        $this.a = $a
-        $this.s = $s
-    }
-
-    [int]Sum() {
-        return ($this.x + $this.m + $this.a + $this.s)
-    }
-
-    [string]ID() {
-        return "{x=$($this.x),m=$($this.m),a=$($this.a),s=$($this.s)}"
-    }
-}
-
 
 $ranges = @{}
 $flows = @{}
@@ -35,64 +11,84 @@ $flows = @{}
 function GetAcceptedRange {
     param(
         $flow,
-        $range
+        [hashtable]$rangein
     )
 
     $rules = $flows[$flow]
 
-    $count = 0
+    $rangesout = @() # list of 4-element hashtables
+
 
     foreach($rule in $rules) {
         $r = ($rule | Select-String "([xmas])([<>])(\d+):(.+)" -AllMatches)
-        $action = ""
+        $max = @{}
+        $min = @{}
+        foreach($a in $keys) {
+            $max[$a] = $rangein[$a][1]
+            $min[$a] = $rangein[$a][0]
+            #write-verbose "$a : $($min[$a]) - $($max[$a])"
+        }        
+
         if($r) {
             write-verbose "    $rule"
             $att = $r.Matches.Groups[1].Value
             $op = $r.Matches.Groups[2].Value
-            $val = $r.Matches.Groups[3].Value
+            $val = [int]$r.Matches.Groups[3].Value
             $act = $r.Matches.Groups[4].Value
 
-            $result = $false
             switch($op) {
                 ">" { 
-                    if($act -eq "A") { $range[$att] = ($val+1,$max); break } 
-                    if($act -eq "R") { break }
-                    GetAcceptedRange
+                    if($max[$att] -le $val) { continue }
+                    $newrange = $rangein.clone()
+                    $newrange[$att] = ([math]::max($val+1,$min[$att]),$max[$att])
+                    if($act -eq "A") { 
+                        $rangesout += $newrange.clone()
+                    } elseif($act -ne "R") {
+                        $rangesout += (GetAcceptedRange $act $newrange)
+                    }
+                    #if($act -eq "R") {  }
+                    #$passrange = $rangein.clone()
+                    #$passrange[$att] = ($min[$att],[math]::min($val,$max[$att]))
+                    #$rangein = $passrange
+                    $rangein[$att] = ($min[$att],[math]::min($val,$max[$att]))
                 }
-                "<" { if($act -eq "A") { $ranges[$att] += ,($min,$val-1) } }
+                "<" { 
+                    if($min[$att] -ge $val) { continue }
+                    $newrange = $rangein.clone()
+                    $newrange[$att] = ($min[$att],[math]::min($max[$att],$val-1))
+                    if($act -eq "A") {                         
+                        $rangesout += $newrange.clone()
+                    }  elseif($act -ne "R") {
+                        $rangesout += (GetAcceptedRange $act $newrange)
+                    }
+                    #if($act -eq "R") { break }
+                    #$passrange = $rangein.clone()
+                    #$passrange[$att] = ([math]::max($min[$att],$val),$max[$att])
+                    #$rangein = $passrange
+                    $rangein[$att] = ([math]::max($min[$att],$val),$max[$att])
+                }
             }
-
-            if($result) { $action = $act }
         } else {
-            write-verbose "    $action"
-            $action = $rule
-        }
-
-        if($action -eq "R") {
-            write-verbose "      $result -> REJECTED"
-            $rejected = $true
-            break
-        } elseif($action -eq "A") {
-            write-verbose "      $result -> ACCEPTED"
-            $accepted = $true
-            break
-        } elseif($action -ne "") {
-            write-verbose "      $result -> $action"
-            $rules = $flows[$action]
-            break
+            if($rule -eq "A") {
+                write-verbose "  A"
+                $rangesout += $rangein.clone()
+            } elseif($rule -eq "R") {
+                write-verbose "  R"
+            } else {
+                write-verbose "  -> $rule"
+                $rangesout += (GetAcceptedRange $rule $rangein)
+            }
         }
     }
 
+    return $rangesout
 }
-
 
 $text = (Get-Content $inputfile)
 
-$ranges["x"] = @()
-$ranges["m"] = @()
-$ranges["a"] = @()
-$ranges["s"] = @()
-
+foreach($a in $keys) {
+    $ranges[$a] = @((1,4000))
+}
 
 #read in all flows
 foreach($line in $text) {
@@ -106,4 +102,16 @@ foreach($line in $text) {
     write-verbose "$name = $rules"
 }
 
-GetAcceptedRange $first
+$acceptable = (GetAcceptedRange $first $ranges)
+$sum = 0
+foreach($set in $acceptable) {
+    $prod = 1
+    $set
+    foreach($v in $set.values) {
+        write-verbose "$($v[1]) - $($v[0])"
+        $prod = $prod * ($v[1] - $v[0] + 1)
+    }
+    $sum += $prod
+}
+
+$sum
