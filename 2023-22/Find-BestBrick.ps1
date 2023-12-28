@@ -221,22 +221,24 @@ PrintTower $bricks
 foreach($brick in ($bricks | sort-object id)) {
     write-output ("{0} Cube(x={1}, y={2}, z={3}) Cube(x={4}, y={5}, z={6})" -f $brick.id,$brick.start.x,$brick.start.y,$brick.start.z,$brick.end.x,$brick.end.y,$brick.end.z)
 }
-#return ## The problem is that the settling proccess is selecting the incorrect "highest block" to settle on. E.g., 81 should settle on 83, but is instead settling on 60
-$count = 0
+
+$sum = 0
 for($b = 0; $b -lt $bricks.Count; $b++) {
     Write-Progress -Activity "Checking Bricks" -PercentComplete ($b / $bricks.count * 100)
     Write-Verbose "Checking brick $($bricks[$b].id) ($($bricks[$b].Print()))"
     $bricksAbove = $bricks | Where-Object {$_.start.z -eq $bricks[$b].end.z + 1 -and $_.Intersects($bricks[$b])}
     $canremove = $true
+    $count = 0
     foreach($brick in $bricksAbove) {
         write-verbose "  Checking brick $($brick.id) above"
         $bricksBelow = $bricks | Where-Object { ($_.end.z -eq $brick.start.z - 1) -and ($_.id -ne $bricks[$b].id) -and $_.Intersects($brick) }
         write-verbose "$($bricksBelow.id)"
-        if($bricksBelow.count -eq 0) { $canremove = $false; break; }
+        if($bricksBelow.count -eq 0) { $canremove = $false; $count++; }
     }
 
-    if($canremove) { $count++ }
+    $sum += $count
 }
 
 #$bricks
-$count
+#$count
+$sum
