@@ -40,25 +40,38 @@ class Brick : System.IComparable {
     $id
     [Coord]$start
     [Coord]$end
+    [system.collections.generic.hashset[object]]$supportedBy
+    [system.collections.generic.hashset[object]]$supports
+    [bool]$onlySupporter
     
     Brick ($id,$x1,$y1,$z1,$x2,$y2,$z2) {
         $this.id = $id
         $this.start = [Coord]::New($x1,$y1,$z1)
         $this.end = [Coord]::New($x2,$y2,$z2)
+        $this.supportedBy = [system.collections.generic.hashset[object]]::new()
+        $this.supports = [system.collections.generic.hashset[object]]::new()
+        $this.onlySupporter = $false
     }
 
     Brick($id,$xyz1,$xyz2) {
         $this.id = $id
         $this.start = [Coord]::New($xyz1)
         $this.end = [Coord]::New($xyz2)
+        $this.supportedBy = [system.collections.generic.hashset[object]]::new()
+        $this.supports = [system.collections.generic.hashset[object]]::new()
+        $this.onlySupporter = $false
     }
 
     Settle($amount) {
-        write-verbose "$($this.print()) --> "
+        #write-verbose "$($this.print()) --> "
         $this.start.z -= $amount
         $this.end.z -= $amount
-        write-verbose "--> $($this.print())"
+        #write-verbose "--> $($this.print())"
     }
+
+    #[bool]OnlySupporter() {
+    #    return ($this.supportedBy.Count -eq 1)
+    #}
 
     [bool]OrientX() {
         return ($this.start.x -ne $this.end.x)
@@ -96,19 +109,19 @@ class Brick : System.IComparable {
         $d3 = Orientation $a2 $b2 $a1
         $d4 = Orientation $a2 $b2 $b1
 
-        write-verbose ("** BRICK {0} ({1},{2}-{3},{4}) INTERSECTS WITH BRICK {5} ({6},{7}-{8},{9}) ?" -f $this.id,$a1.x,$a1.y,$b1.x,$b1.y,$brick.id,$a2.x,$a2.y,$b2.x,$b2.y)        
+        #write-verbose ("** BRICK {0} ({1},{2}-{3},{4}) INTERSECTS WITH BRICK {5} ({6},{7}-{8},{9}) ?" -f $this.id,$a1.x,$a1.y,$b1.x,$b1.y,$brick.id,$a2.x,$a2.y,$b2.x,$b2.y)        
 
-        if($d1 -ne $d2 -and $d3 -ne $d4) { write-verbose "    ** YES"; return $true }
+        if($d1 -ne $d2 -and $d3 -ne $d4) { return $true }
 
-        if($d1 -eq 0 -and (OnSegment $a1 $a2 $b1)) { write-verbose "    ** YES"; return $true }
+        if($d1 -eq 0 -and (OnSegment $a1 $a2 $b1)) { return $true }
 
-        if($d2 -eq 0 -and (OnSegment $a1 $b2 $b1)) { write-verbose "    ** YES"; return $true }
+        if($d2 -eq 0 -and (OnSegment $a1 $b2 $b1)) { return $true }
 
-        if($d3 -eq 0 -and (OnSegment $a2 $a1 $b2)) { write-verbose "    ** YES"; return $true }
+        if($d3 -eq 0 -and (OnSegment $a2 $a1 $b2)) { return $true }
 
-        if($d4 -eq 0 -and (OnSegment $a2 $b1 $b2)) { write-verbose "    ** YES"; return $true }
+        if($d4 -eq 0 -and (OnSegment $a2 $b1 $b2)) { return $true }
 
-        write-verbose "    XX NO"; 
+        #write-verbose "    XX NO"; 
         return $false
     }
 
@@ -199,46 +212,83 @@ foreach($line in (Get-Content $inputfile)) {
 
 $bricks = $bricks | Sort-Object
 
-PrintTower $bricks
+#PrintTower $bricks
 
 for($b = 0; $b -lt $bricks.count; $b++) {
     Write-Progress -Activity "Settling Tower" -PercentComplete ($b / $bricks.count * 100)
-    write-verbose "Evaluating brick $($bricks[$b].id) ($($bricks[$b].Print()))"
+    #write-verbose "Evaluating brick $($bricks[$b].id) ($($bricks[$b].Print()))"
     $bricksBelow = $bricks | Where-Object { $_.IsBelow($bricks[$b]) } | Sort-Object
-    write-verbose "  Bricks below:"
-    foreach($bb in $bricksBelow) { write-verbose "    $($bb.id)"}
+    #write-verbose "  Bricks below:"
+    #foreach($bb in $bricksBelow) { write-verbose "    $($bb.id)"}
     if($bricksBelow.count -eq 0) {
         $newZ = 1
     } else {
-        write-verbose "BRICK $($bricks[$b].id) LANDS ON BRICK $($bricksBelow[$bricksBelow.count-1].id)"
+        #write-verbose "BRICK $($bricks[$b].id) LANDS ON BRICK $($bricksBelow[$bricksBelow.count-1].id)"
         $newZ = $bricksBelow[$bricksBelow.count -1].end.z + 1
     }
 
     $bricks[$b].Settle($bricks[$b].start.z - $newZ)
 }
 
-PrintTower $bricks
-foreach($brick in ($bricks | sort-object id)) {
-    write-output ("{0} Cube(x={1}, y={2}, z={3}) Cube(x={4}, y={5}, z={6})" -f $brick.id,$brick.start.x,$brick.start.y,$brick.start.z,$brick.end.x,$brick.end.y,$brick.end.z)
-}
+#PrintTower $bricks
 
-$sum = 0
+$tower = @{}
+
 for($b = 0; $b -lt $bricks.Count; $b++) {
+    $tower[$bricks[$b].id] = $bricks[$b]
     Write-Progress -Activity "Checking Bricks" -PercentComplete ($b / $bricks.count * 100)
     Write-Verbose "Checking brick $($bricks[$b].id) ($($bricks[$b].Print()))"
     $bricksAbove = $bricks | Where-Object {$_.start.z -eq $bricks[$b].end.z + 1 -and $_.Intersects($bricks[$b])}
-    $canremove = $true
-    $count = 0
     foreach($brick in $bricksAbove) {
-        write-verbose "  Checking brick $($brick.id) above"
-        $bricksBelow = $bricks | Where-Object { ($_.end.z -eq $brick.start.z - 1) -and ($_.id -ne $bricks[$b].id) -and $_.Intersects($brick) }
-        write-verbose "$($bricksBelow.id)"
-        if($bricksBelow.count -eq 0) { $canremove = $false; $count++; }
+        $tower[$bricks[$b].id].supports.add($brick.id) | Out-null
     }
-
-    $sum += $count
 }
 
-#$bricks
-#$count
+foreach($id in $tower.Keys) {
+    $tower.GetEnumerator() | Select-Object -ExpandProperty Value | Where-Object {$_.supports -contains $id} | Select-Object -ExpandProperty id | foreach-object {$tower[$id].supportedBy.add($_) | out-null}
+    if($tower[$id].supportedBy.Count -eq 1) { 
+        $x = [int]([string]$tower[$id].supportedBy)
+        write-verbose "$id,$x"
+        $tower[$x].onlySupporter = $true
+    }
+}
+
+
+$sum = 0
+$onlySupporters = $tower.GetEnumerator() | Select-Object -ExpandProperty Value | Where-Object {$_.onlySupporter -eq $true }
+$count = 0
+foreach($brick in $onlySupporters) {
+    write-progress -Activity "Causing Chain Reaction" -Status $brick.id -PercentComplete ($count / $onlySupporters.count * 100)
+    #write-verbose "PROCESSING $($brick.id)"
+    $fallen = [system.collections.generic.hashset[object]]::New()
+    $supports = $brick.supports
+    #write-verbose "  SUPPORTS: $supports"
+    $S = [System.Collections.Generic.queue[object]]::new()
+    $S.enqueue($brick.id)
+    $newsupports = @()
+
+    while($S.count -gt 0) {
+        #write-verbose "  - $S"
+        $fallen.add($S.dequeue()) | out-null
+        
+        foreach($b in $supports) {            
+            $supportedby = $tower[$b].supportedBy
+            write-verbose "$b | $supports | $supportedBy | $fallen"
+
+            if($supportedby.issubsetof($fallen) -and -not $fallen.Contains($b)) {
+                $S.enqueue($b)
+                $newsupports = $tower[$b].supports + $newsupports
+                $newsupports = $newsupports | Where-Object {$_ -ne $b} | Select-OBject -Unique
+                write-verbose "  * $newsupports"
+            }
+        }
+        $supports = $newsupports
+    }
+
+    $count++
+
+    $sum += $fallen.count - 1
+}
+
+
 $sum
